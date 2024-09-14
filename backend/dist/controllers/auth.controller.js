@@ -1,11 +1,11 @@
 import prisma from "../db/prisma.js";
-import bcrypt from 'bcryptjs';
+import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
 export const signup = async (req, res) => {
     try {
         const { fullName, username, password, confirmPassword, gender } = req.body;
         if (!fullName || !username || !password || !confirmPassword || !gender) {
-            return res.status(400).json({ error: 'please fill in all fields' });
+            return res.status(400).json({ error: "please fill in all fields" });
         }
         if (password.trim() !== confirmPassword.trim()) {
             return res.status(400).json({ error: "Password don't match" });
@@ -24,8 +24,8 @@ export const signup = async (req, res) => {
                 username,
                 password: hashedPassword,
                 gender,
-                profilePic: gender === "male" ? boyProfilePic : girlProfilePic
-            }
+                profilePic: gender === "male" ? boyProfilePic : girlProfilePic,
+            },
         });
         if (newUser) {
             generateToken(newUser.id, res);
@@ -33,11 +33,11 @@ export const signup = async (req, res) => {
                 id: newUser.id,
                 fullName: newUser.fullName,
                 username: newUser.username,
-                profilePic: newUser.profilePic
+                profilePic: newUser.profilePic,
             });
         }
         else {
-            res.status(400).json({ error: 'Invalid user data' });
+            res.status(400).json({ error: "Invalid user data" });
         }
     }
     catch (error) {
@@ -49,12 +49,12 @@ export const login = async (req, res) => {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
-            return res.status(400).json({ error: 'please fill in all fields' });
+            return res.status(400).json({ error: "please fill in all fields" });
         }
         const existUser = await prisma.user.findUnique({
             where: {
-                username: username
-            }
+                username: username,
+            },
         });
         if (!existUser) {
             return res.status(400).json({ error: "User doesn't exist" });
@@ -62,7 +62,7 @@ export const login = async (req, res) => {
         const decodePassword = await bcrypt.compare(password, existUser.password);
         if (!decodePassword) {
             res.status(400).json({
-                error: "Password doesn't match"
+                error: "Password doesn't match",
             });
         }
         if (existUser) {
@@ -71,11 +71,11 @@ export const login = async (req, res) => {
                 id: existUser.id,
                 fullName: existUser.fullName,
                 username: existUser.username,
-                profilePic: existUser.profilePic
+                profilePic: existUser.profilePic,
             });
         }
         else {
-            res.status(400).json({ error: 'Invalid user data' });
+            res.status(400).json({ error: "Invalid user data" });
         }
     }
     catch (error) {
@@ -84,12 +84,29 @@ export const login = async (req, res) => {
 };
 export const logout = (req, res) => {
     try {
-        res.clearCookie('jwt', {
+        res.clearCookie("jwt", {
             httpOnly: true,
-            sameSite: 'strict',
-            secure: process.env.NODE_ENV !== 'development',
+            sameSite: "strict",
+            secure: process.env.NODE_ENV !== "development",
         });
-        res.status(200).json({ message: 'Logout successful' });
+        res.status(200).json({ message: "Logout successful" });
+    }
+    catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+export const getMe = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+        if (!user) {
+            return res.status(404).json({ error: "User not Found" });
+        }
+        res.status(200).json({
+            id: user.id,
+            fullName: user.fullName,
+            username: user.username,
+            profilePic: user.profilePic,
+        });
     }
     catch (error) {
         res.status(500).json({ error: "Internal Server Error" });
