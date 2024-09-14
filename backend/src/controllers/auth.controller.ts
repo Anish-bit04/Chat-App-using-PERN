@@ -1,18 +1,17 @@
 import { Request,Response } from "express";
 import prisma from "../db/prisma.js";
 import bcrypt from 'bcryptjs'
-import jwt from "jsonwebtoken"
 import generateToken from "../utils/generateToken.js";
 
 export const signup = async(req:Request,res:Response)=>{
 try{
-    const {fullName,username,password,confirmPassword, gender} = req.body()    
+    const {fullName,username,password,confirmPassword, gender} = req.body 
     
     if(!fullName || !username || !password || !confirmPassword || !gender){
         return res.status(400).json({error:'please fill in all fields'})
     }
 
-    if(password !== confirmPassword){
+    if(password.trim() !== confirmPassword.trim()){
         return res.status(400).json({error: "Password don't match"})
     }
 
@@ -43,7 +42,7 @@ try{
         generateToken(newUser.id,res)
 
         res.status(201).json({
-            if:newUser.id,
+            id:newUser.id,
             fullName:newUser.fullName,
             username:newUser.username,
             profilePic:newUser.profilePic
@@ -52,15 +51,65 @@ try{
         res.status(400).json({error: 'Invalid user data'})
     }
     
-}catch(error:any){
-    console.log(error.message)
-    res.status(500).json({error: "Internal Server Error"})
-}
+    }catch(error:any){
+        console.log(error.message)
+        res.status(500).json({error: "Internal Server Error"})
+    }
+    }
+
+export const login = async(req:Request,res:Response)=>{
+    
+    try{
+        const {username,password} = req.body;
+
+        if(!username || !password ){
+            return res.status(400).json({error:'please fill in all fields'})
+        }
+    
+        const existUser = await prisma.user.findUnique({
+            where:{
+                username:username
+            }
+        })
+        
+        if (!existUser) {
+            return res.status(400).json({ error: "User doesn't exist" });
+        }
+
+        const decodePassword = await bcrypt.compare(password, existUser.password);
+
+        if(!decodePassword){
+            res.status(400).json({
+                error:"Password doesn't match"
+            })
+        }
+
+        if(existUser){
+            generateToken(existUser.id,res)
+    
+            res.status(201).json({
+                id:existUser.id,
+                fullName:existUser.fullName,
+                username:existUser.username,
+                profilePic:existUser.profilePic})
+        }else{
+            res.status(400).json({error: 'Invalid user data'})
+        }
+    }catch(error){
+        res.status(500).json({error:"Internal Server Error"})
+    }
+   
 }
 
-export const login = (req:Request,res:Response)=>{
-    res.send('Heeelo')
-}
 export const logout = (req:Request,res:Response)=>{
-    res.send('Heeelo')
+    try{
+        res.clearCookie('jwt',{
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV !== 'development', 
+        })
+        res.status(200).json({ message: 'Logout successful' });
+    }catch(error:any){
+        res.status(500).json({error:"Internal Server Error"})
+    }
 }

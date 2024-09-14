@@ -1,6 +1,5 @@
 import express from 'express';
+import { conversations } from '../controllers/messages.controller.js';
 const router = express.Router();
-router.get('/conversations', (req, res) => {
-    res.send('Hheelo ');
-});
+router.get('/conversations', conversations);
 export default router;
